@@ -63,8 +63,8 @@ class ResnetBlock3D(nn.Module):
         eps (`float`, *optional*, defaults to `1e-6`): The epsilon to use for the normalization.
         non_linearity (`str`, *optional*, default to `"swish"`): the activation function to use.
         time_embedding_norm (`str`, *optional*, default to `"default"` ): Time scale shift config.
-            By default, apply timestep embedding conditioning with a simple shift mechanism. Choose "scale_shift"
-            for a stronger conditioning with scale and shift.
+            By default, apply timestep embedding conditioning with a simple shift mechanism. Choose "scale_shift" for a
+            stronger conditioning with scale and shift.
         kernel (`torch.FloatTensor`, optional, default to None)
         output_scale_factor (`float`, *optional*, default to be `1.0`): the scale factor to use for the output.
         use_in_shortcut (`bool`, *optional*, default to `True`):
