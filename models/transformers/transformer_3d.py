@@ -118,6 +118,8 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         interpolation_scale: float = None,
     ):
         super().__init__()
+
+        # Validate inputs.
         if patch_size is not None:
             if norm_type not in ["ada_norm", "ada_norm_zero", "ada_norm_single"]:
                 raise NotImplementedError(
@@ -128,13 +130,19 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
                     f"When using a `patch_size` and this `norm_type` ({norm_type}), `num_embeds_ada_norm` cannot be None."
                 )
 
+        # Set some common variables used across the board.
         self.use_linear_projection = use_linear_projection
+        self.interpolation_scale = interpolation_scale
+        self.caption_channels = caption_channels
         self.num_attention_heads = num_attention_heads
         self.attention_head_dim = attention_head_dim
-        inner_dim = num_attention_heads * attention_head_dim
+        self.inner_dim = self.config.num_attention_heads * self.config.attention_head_dim
+        self.in_channels = in_channels
+        self.out_channels = in_channels if out_channels is None else out_channels
+        self.gradient_checkpointing = False
 
-        conv_cls = nn.Conv3d if USE_PEFT_BACKEND else LoRACompatibleConv3d
-        linear_cls = nn.Linear if USE_PEFT_BACKEND else LoRACompatibleLinear
+        self.conv_cls = nn.Conv3d if USE_PEFT_BACKEND else LoRACompatibleConv3d
+        self.linear_cls = nn.Linear if USE_PEFT_BACKEND else LoRACompatibleLinear
 
         # 1. Transformer3DModel can process standard continuous volumes
         #    of shape `(batch_size, num_channels, depth, width, height)`
@@ -159,63 +167,49 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
                 f"Has to define `in_channels`: {in_channels}. Make sure that `in_channels` is not None."
             )
 
-        # 2. Define input layers
+        # 2. Initialize the right blocks.
+        # These functions follow a common structure:
+        # a. Initialize the input blocks. b. Initialize the transformer blocks.
+        # c. Initialize the output blocks and other projection blocks when necessary.
         if self.is_input_continuous:
-            self.in_channels = in_channels
+            self._init_continuous_input(norm_type=norm_type)
 
-            self.norm = torch.nn.GroupNorm(num_groups=norm_num_groups, num_channels=in_channels, eps=1e-6, affine=True)
-            if use_linear_projection:
-                self.proj_in = linear_cls(in_channels, inner_dim)
-            else:
-                self.proj_in = conv_cls(in_channels, inner_dim, kernel_size=1, stride=1, padding=0)
+    def _init_continuous_input(self, norm_type):
+        self.norm = torch.nn.GroupNorm(
+            num_groups=self.config.norm_num_groups, num_channels=self.in_channels, eps=1e-6, affine=True
+        )
+        if self.use_linear_projection:
+            self.proj_in = self.linear_cls(self.in_channels, self.inner_dim)
+        else:
+            self.proj_in = self.conv_cls(self.in_channels, self.inner_dim, kernel_size=1, stride=1, padding=0)
 
-        # 3. Define transformers blocks
         self.transformer_blocks = nn.ModuleList(
             [
                 BasicTransformerBlock(
-                    inner_dim,
-                    num_attention_heads,
-                    attention_head_dim,
-                    dropout=dropout,
-                    cross_attention_dim=cross_attention_dim,
-                    activation_fn=activation_fn,
-                    num_embeds_ada_norm=num_embeds_ada_norm,
-                    attention_bias=attention_bias,
-                    only_cross_attention=only_cross_attention,
-                    double_self_attention=double_self_attention,
-                    upcast_attention=upcast_attention,
+                    self.inner_dim,
+                    self.config.num_attention_heads,
+                    self.config.attention_head_dim,
+                    dropout=self.config.dropout,
+                    cross_attention_dim=self.config.cross_attention_dim,
+                    activation_fn=self.config.activation_fn,
+                    num_embeds_ada_norm=self.config.num_embeds_ada_norm,
+                    attention_bias=self.config.attention_bias,
+                    only_cross_attention=self.config.only_cross_attention,
+                    double_self_attention=self.config.double_self_attention,
+                    upcast_attention=self.config.upcast_attention,
                     norm_type=norm_type,
-                    norm_elementwise_affine=norm_elementwise_affine,
-                    norm_eps=norm_eps,
-                    attention_type=attention_type,
+                    norm_elementwise_affine=self.config.norm_elementwise_affine,
+                    norm_eps=self.config.norm_eps,
+                    attention_type=self.config.attention_type,
                 )
-                for d in range(num_layers)
+                for _ in range(self.config.num_layers)
             ]
         )
 
-        # 4. Define output layers
-        self.out_channels = in_channels if out_channels is None else out_channels
-        if self.is_input_continuous:
-            # TODO: should use out_channels for continuous projections
-            if use_linear_projection:
-                self.proj_out = linear_cls(inner_dim, in_channels)
-            else:
-                self.proj_out = conv_cls(inner_dim, in_channels, kernel_size=1, stride=1, padding=0)
-
-        # 5. PixArt-Alpha blocks.
-        self.adaln_single = None
-        self.use_additional_conditions = False
-        if norm_type == "ada_norm_single":
-            self.use_additional_conditions = self.config.sample_size == 128
-            # TODO(Sayak, PVP) clean this, for now we use sample size to determine whether to use
-            # additional conditions until we find better name
-            self.adaln_single = AdaLayerNormSingle(inner_dim, use_additional_conditions=self.use_additional_conditions)
-
-        self.caption_projection = None
-        if caption_channels is not None:
-            self.caption_projection = PixArtAlphaTextProjection(in_features=caption_channels, hidden_size=inner_dim)
-
-        self.gradient_checkpointing = False
+        if self.use_linear_projection:
+            self.proj_out = self.linear_cls(self.inner_dim, self.out_channels)
+        else:
+            self.proj_out = self.conv_cls(self.inner_dim, self.out_channels, kernel_size=1, stride=1, padding=0)
 
     def _set_gradient_checkpointing(self, module, value=False):
         if hasattr(module, "gradient_checkpointing"):
@@ -324,7 +318,7 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
                 )
 
         # 2. Blocks
-        if self.caption_projection is not None:
+        if self.is_input_patches and self.caption_projection is not None:
             batch_size = hidden_states.shape[0]
             encoder_hidden_states = self.caption_projection(encoder_hidden_states)
             encoder_hidden_states = encoder_hidden_states.view(batch_size, -1, hidden_states.shape[-1])
