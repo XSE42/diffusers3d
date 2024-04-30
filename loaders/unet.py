@@ -48,7 +48,7 @@ from diffusers.models.embeddings import (
     IPAdapterPlusImageProjection,
     MultiIPAdapterImageProjection,
 )
-from diffusers.models.modeling_utils import _LOW_CPU_MEM_USAGE_DEFAULT, load_model_dict_into_meta
+from diffusers.models.modeling_utils import _LOW_CPU_MEM_USAGE_DEFAULT, load_model_dict_into_meta, load_state_dict
 from diffusers.utils import (
     USE_PEFT_BACKEND,
     _get_model_file,
@@ -227,7 +227,7 @@ class UNet3DConditionLoadersMixin:
                     subfolder=subfolder,
                     user_agent=user_agent,
                 )
-                state_dict = torch.load(model_file, map_location="cpu")
+                state_dict = load_state_dict(model_file)
         else:
             state_dict = pretrained_model_name_or_path_or_dict
 
