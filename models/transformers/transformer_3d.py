@@ -116,6 +116,7 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         attention_type: str = "default",
         caption_channels: int = None,
         interpolation_scale: float = None,
+        use_additional_conditions: Optional[bool] = None,
     ):
         super().__init__()
 
@@ -140,6 +141,12 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         self.in_channels = in_channels
         self.out_channels = in_channels if out_channels is None else out_channels
         self.gradient_checkpointing = False
+        if use_additional_conditions is None:
+            if norm_type == "ada_norm_single" and sample_size == 128:
+                use_additional_conditions = True
+            else:
+                use_additional_conditions = False
+        self.use_additional_conditions = use_additional_conditions
 
         self.conv_cls = nn.Conv3d if USE_PEFT_BACKEND else LoRACompatibleConv3d
         self.linear_cls = nn.Linear if USE_PEFT_BACKEND else LoRACompatibleLinear
