@@ -296,33 +296,11 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
 
         # 1. Input
         if self.is_input_continuous:
-            batch, _, depth, height, width = hidden_states.shape
+            batch_size, _, depth, height, width = hidden_states.shape
             residual = hidden_states
-
-            hidden_states = self.norm(hidden_states)
-            if not self.use_linear_projection:
-                hidden_states = (
-                    self.proj_in(hidden_states, scale=lora_scale)
-                    if not USE_PEFT_BACKEND
-                    else self.proj_in(hidden_states)
-                )
-                inner_dim = hidden_states.shape[1]
-                hidden_states = hidden_states.permute(0, 2, 3, 4, 1).reshape(batch, depth * height * width, inner_dim)
-            else:
-                inner_dim = hidden_states.shape[1]
-                hidden_states = hidden_states.permute(0, 2, 3, 4, 1).reshape(batch, depth * height * width, inner_dim)
-                hidden_states = (
-                    self.proj_in(hidden_states, scale=lora_scale)
-                    if not USE_PEFT_BACKEND
-                    else self.proj_in(hidden_states)
-                )
+            hidden_states, inner_dim = self._operate_on_continuous_inputs(hidden_states, lora_scale=lora_scale)
 
         # 2. Blocks
-        if self.is_input_patches and self.caption_projection is not None:
-            batch_size = hidden_states.shape[0]
-            encoder_hidden_states = self.caption_projection(encoder_hidden_states)
-            encoder_hidden_states = encoder_hidden_states.view(batch_size, -1, hidden_states.shape[-1])
-
         for block in self.transformer_blocks:
             if self.training and self.gradient_checkpointing:
 
@@ -360,28 +338,65 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
 
         # 3. Output
         if self.is_input_continuous:
-            if not self.use_linear_projection:
-                hidden_states = (
-                    hidden_states.reshape(batch, depth, height, width, inner_dim).permute(0, 4, 1, 2, 3).contiguous()
-                )
-                hidden_states = (
-                    self.proj_out(hidden_states, scale=lora_scale)
-                    if not USE_PEFT_BACKEND
-                    else self.proj_out(hidden_states)
-                )
-            else:
-                hidden_states = (
-                    self.proj_out(hidden_states, scale=lora_scale)
-                    if not USE_PEFT_BACKEND
-                    else self.proj_out(hidden_states)
-                )
-                hidden_states = (
-                    hidden_states.reshape(batch, depth, height, width, inner_dim).permute(0, 4, 1, 2, 3).contiguous()
-                )
-
-            output = hidden_states + residual
+            output = self._get_output_for_continuous_inputs(
+                hidden_states=hidden_states,
+                residual=residual,
+                batch_size=batch_size,
+                depth=depth,
+                height=height,
+                width=width,
+                inner_dim=inner_dim,
+                lora_scale=lora_scale,
+            )
 
         if not return_dict:
             return (output,)
 
         return Transformer3DModelOutput(sample=output)
+
+
+    def _operate_on_continuous_inputs(self, hidden_states, lora_scale):
+        batch, _, depth, height, width = hidden_states.shape
+        hidden_states = self.norm(hidden_states)
+
+        if not self.use_linear_projection:
+            hidden_states = (
+                self.proj_in(hidden_states, scale=lora_scale)
+                if not USE_PEFT_BACKEND
+                else self.proj_in(hidden_states)
+            )
+            inner_dim = hidden_states.shape[1]
+            hidden_states = hidden_states.permute(0, 2, 3, 4, 1).reshape(batch, depth * height * width, inner_dim)
+        else:
+            inner_dim = hidden_states.shape[1]
+            hidden_states = hidden_states.permute(0, 2, 3, 4, 1).reshape(batch, depth * height * width, inner_dim)
+            hidden_states = (
+                self.proj_in(hidden_states, scale=lora_scale)
+                if not USE_PEFT_BACKEND
+                else self.proj_in(hidden_states)
+            )
+
+        return hidden_states, inner_dim
+
+    def _get_output_for_continuous_inputs(self, hidden_states, residual, batch_size, depth, height, width, inner_dim, lora_scale):
+        if not self.use_linear_projection:
+            hidden_states = (
+                hidden_states.reshape(batch_size, depth, height, width, inner_dim).permute(0, 4, 1, 2, 3).contiguous()
+            )
+            hidden_states = (
+                self.proj_out(hidden_states, scale=lora_scale)
+                if not USE_PEFT_BACKEND
+                else self.proj_out(hidden_states)
+            )
+        else:
+            hidden_states = (
+                self.proj_out(hidden_states, scale=lora_scale)
+                if not USE_PEFT_BACKEND
+                else self.proj_out(hidden_states)
+            )
+            hidden_states = (
+                hidden_states.reshape(batch_size, depth, height, width, inner_dim).permute(0, 4, 1, 2, 3).contiguous()
+            )
+
+        output = hidden_states + residual
+        return output
