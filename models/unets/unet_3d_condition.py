@@ -180,6 +180,7 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin, UNet3DConditionLoadersMixin,
     """
 
     _supports_gradient_checkpointing = True
+    _no_split_modules = ["BasicTransformerBlock", "ResnetBlock3D", "CrossAttnUpBlock3D"]
 
     @register_to_config
     def __init__(

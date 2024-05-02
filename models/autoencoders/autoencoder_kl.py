@@ -96,6 +96,7 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
     """
 
     _supports_gradient_checkpointing = True
+    _no_split_modules = ["BasicTransformerBlock", "ResnetBlock3D"]
 
     @register_to_config
     def __init__(
