@@ -244,7 +244,7 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
         self.set_attn_processor(processor)
 
     @apply_forward_hook
-    def encode(self, x: torch.FloatTensor, return_dict: bool = True) -> Autoencoder3DOutput:
+    def encode(self, x: torch.Tensor, return_dict: bool = True) -> Autoencoder3DOutput:
         if self.use_slicing and x.shape[0] > 1:
             encoded_slices = [self.encoder(x_slice) for x_slice in x.split(1)]
             h = torch.cat(encoded_slices)
@@ -259,7 +259,7 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
 
         return Autoencoder3DOutput(latent_dist=posterior)
 
-    def _decode(self, z: torch.FloatTensor, return_dict: bool = True) -> Union[Decoder3DOutput, torch.FloatTensor]:
+    def _decode(self, z: torch.Tensor, return_dict: bool = True) -> Union[Decoder3DOutput, torch.Tensor]:
         z = self.post_quant_conv(z)
         dec = self.decoder(z)
 
@@ -269,7 +269,7 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
         return Decoder3DOutput(sample=dec)
 
     @apply_forward_hook
-    def decode(self, z: torch.FloatTensor, return_dict: bool = True) -> Union[Decoder3DOutput, torch.FloatTensor]:
+    def decode(self, z: torch.Tensor, return_dict: bool = True) -> Union[Decoder3DOutput, torch.Tensor]:
         if self.use_slicing and z.shape[0] > 1:
             decoded_slices = [self._decode(z_slice).sample for z_slice in z.split(1)]
             decoded = torch.cat(decoded_slices)
@@ -283,14 +283,14 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
 
     def forward(
         self,
-        sample: torch.FloatTensor,
+        sample: torch.Tensor,
         sample_posterior: bool = False,
         return_dict: bool = True,
         generator: Optional[torch.Generator] = None,
-    ) -> Union[Decoder3DOutput, torch.FloatTensor]:
+    ) -> Union[Decoder3DOutput, torch.Tensor]:
         r"""
         Args:
-            sample (`torch.FloatTensor` of shape `(batch_size, num_channels, depth, height, width)`): Input sample.
+            sample (`torch.Tensor` of shape `(batch_size, num_channels, depth, height, width)`): Input sample.
             sample_posterior (`bool`, *optional*, defaults to `False`):
                 Whether to sample from the posterior.
             return_dict (`bool`, *optional*, defaults to `True`):

@@ -51,12 +51,12 @@ class Transformer3DModelOutput(BaseOutput):
     The output of [`Transformer3DModel`].
 
     Args:
-        sample (`torch.FloatTensor` of shape `(batch_size, num_channels, depth, height, width)`):
+        sample (`torch.Tensor` of shape `(batch_size, num_channels, depth, height, width)`):
             The hidden states output conditioned on the `encoder_hidden_states` input. If discrete, returns probability
             distributions for the unnoised latent pixels.
     """
 
-    sample: torch.FloatTensor
+    sample: torch.Tensor
 
 
 class Transformer3DModel(ModelMixin, ConfigMixin):
@@ -241,10 +241,10 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         Args:
             hidden_states (
                 `torch.LongTensor` of shape `(batch size, num latent pixels)` if discrete,
-                `torch.FloatTensor` of shape `(batch size, channel, depth, height, width)` if continuous
+                `torch.Tensor` of shape `(batch size, channel, depth, height, width)` if continuous
             ):
                 Input `hidden_states`.
-            encoder_hidden_states ( `torch.FloatTensor` of shape `(batch size, sequence len, embed dims)`, *optional*):
+            encoder_hidden_states ( `torch.Tensor` of shape `(batch size, sequence len, embed dims)`, *optional*):
                 Conditional embeddings for cross attention layer. If not given, cross-attention defaults to
                 self-attention.
             timestep ( `torch.LongTensor`, *optional*):

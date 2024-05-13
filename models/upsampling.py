@@ -109,10 +109,10 @@ class Upsample3D(nn.Module):
 
     def forward(
         self,
-        hidden_states: torch.FloatTensor,
+        hidden_states: torch.Tensor,
         output_size: Optional[int] = None,
         scale: float = 1.0,
-    ) -> torch.FloatTensor:
+    ) -> torch.Tensor:
         assert hidden_states.shape[1] == self.channels
 
         if self.norm is not None:

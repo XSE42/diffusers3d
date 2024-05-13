@@ -47,11 +47,11 @@ class Decoder3DOutput(BaseOutput):
     Output of decoding method.
 
     Args:
-        sample (`torch.FloatTensor` of shape `(batch_size, num_channels, depth, height, width)`):
+        sample (`torch.Tensor` of shape `(batch_size, num_channels, depth, height, width)`):
             The decoded output sample from the last layer of the model.
     """
 
-    sample: torch.FloatTensor
+    sample: torch.Tensor
 
 
 class Encoder3D(nn.Module):
@@ -147,7 +147,7 @@ class Encoder3D(nn.Module):
 
         self.gradient_checkpointing = False
 
-    def forward(self, sample: torch.FloatTensor) -> torch.FloatTensor:
+    def forward(self, sample: torch.Tensor) -> torch.Tensor:
         r"""The forward method of the `Encoder3D` class."""
 
         sample = self.conv_in(sample)
@@ -293,9 +293,9 @@ class Decoder3D(nn.Module):
 
     def forward(
         self,
-        sample: torch.FloatTensor,
-        latent_embeds: Optional[torch.FloatTensor] = None,
-    ) -> torch.FloatTensor:
+        sample: torch.Tensor,
+        latent_embeds: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         r"""The forward method of the `Decoder3D` class."""
 
         sample = self.conv_in(sample)
@@ -370,7 +370,7 @@ class DiagonalGaussianDistribution3D(object):
                 self.mean, device=self.parameters.device, dtype=self.parameters.dtype
             )
 
-    def sample(self, generator: Optional[torch.Generator] = None) -> torch.FloatTensor:
+    def sample(self, generator: Optional[torch.Generator] = None) -> torch.Tensor:
         # make sure sample is on the same device as the parameters and has same dtype
         sample = randn_tensor(
             self.mean.shape,

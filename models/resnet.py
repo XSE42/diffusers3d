@@ -65,7 +65,7 @@ class ResnetBlock3D(nn.Module):
         time_embedding_norm (`str`, *optional*, default to `"default"` ): Time scale shift config.
             By default, apply timestep embedding conditioning with a simple shift mechanism. Choose "scale_shift" for a
             stronger conditioning with scale and shift.
-        kernel (`torch.FloatTensor`, optional, default to None)
+        kernel (`torch.Tensor`, optional, default to None)
         output_scale_factor (`float`, *optional*, default to be `1.0`): the scale factor to use for the output.
         use_in_shortcut (`bool`, *optional*, default to `True`):
             If `True`, add a 1x1 nn.conv3d layer for skip-connection.
@@ -92,7 +92,7 @@ class ResnetBlock3D(nn.Module):
         non_linearity: str = "swish",
         skip_time_act: bool = False,
         time_embedding_norm: str = "default",  # default, scale_shift
-        kernel: Optional[torch.FloatTensor] = None,
+        kernel: Optional[torch.Tensor] = None,
         output_scale_factor: float = 1.0,
         use_in_shortcut: Optional[bool] = None,
         up: bool = False,
@@ -176,14 +176,14 @@ class ResnetBlock3D(nn.Module):
 
     def forward(
         self,
-        input_tensor: torch.FloatTensor,
-        temb: torch.FloatTensor,
+        input_tensor: torch.Tensor,
+        temb: torch.Tensor,
         scale: float = 1.0,
-    ) -> torch.FloatTensor:
+    ) -> torch.Tensor:
         r"""
         Parameters:
-            input_tensor (`torch.FloatTensor` of shape `(batch_size, in_channels, depth, height, width)`)
-            temb (`torch.FloatTensor` of shape `(batch_size, temb_channels)`): The timestep embedding.
+            input_tensor (`torch.Tensor` of shape `(batch_size, in_channels, depth, height, width)`)
+            temb (`torch.Tensor` of shape `(batch_size, temb_channels)`): The timestep embedding.
         """
         hidden_states = input_tensor
 
@@ -276,7 +276,7 @@ class ResnetBlockCondNorm3D(nn.Module):
         non_linearity (`str`, *optional*, default to `"swish"`): the activation function to use.
         time_embedding_norm (`str`, *optional*, default to `"ada_group"` ):
             The normalization layer for time embedding `temb`. Currently only support "ada_group" or "spatial".
-        kernel (`torch.FloatTensor`, optional, default to None)
+        kernel (`torch.Tensor`, optional, default to None)
         output_scale_factor (`float`, *optional*, default to be `1.0`): the scale factor to use for the output.
         use_in_shortcut (`bool`, *optional*, default to `True`):
             If `True`, add a 1x1 nn.conv3d layer for skip-connection.
@@ -367,10 +367,10 @@ class ResnetBlockCondNorm3D(nn.Module):
 
     def forward(
         self,
-        input_tensor: torch.FloatTensor,
-        temb: torch.FloatTensor,
+        input_tensor: torch.Tensor,
+        temb: torch.Tensor,
         scale: float = 1.0,
-    ) -> torch.FloatTensor:
+    ) -> torch.Tensor:
         hidden_states = input_tensor
 
         hidden_states = self.norm1(hidden_states, temb)

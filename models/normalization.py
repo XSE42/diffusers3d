@@ -67,8 +67,8 @@ class AdaGroupNorm3d(nn.Module):
     def forward(self, x: torch.Tensor, emb: torch.Tensor) -> torch.Tensor:
         r"""
         Parameters:
-            x (`torch.FloatTensor` of shape `(batch_size, out_dim, depth, height, width)`)
-            emb (`torch.FloatTensor` of shape `(batch_size, embedding_dim)`)
+            x (`torch.Tensor` of shape `(batch_size, out_dim, depth, height, width)`)
+            emb (`torch.Tensor` of shape `(batch_size, embedding_dim)`)
         """
         if self.act:
             emb = self.act(emb)
