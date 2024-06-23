@@ -35,10 +35,8 @@ import torch
 import torch.nn as nn
 from diffusers.models.modeling_utils import ModelMixin
 from diffusers.configuration_utils import ConfigMixin, register_to_config
-from diffusers.utils import BaseOutput
 from diffusers.utils.accelerate_utils import apply_forward_hook
 
-from .vae import Encoder3D, Decoder3D, Decoder3DOutput, DiagonalGaussianDistribution3D
 from ..attention_processor import (
     ADDED_KV_ATTENTION_PROCESSORS,
     CROSS_ATTENTION_PROCESSORS,
@@ -47,20 +45,8 @@ from ..attention_processor import (
     AttnAddedKVProcessor,
     AttnProcessor,
 )
-
-
-@dataclass
-class Autoencoder3DOutput(BaseOutput):
-    """
-    Output of Autoencoder3D encoding method.
-
-    Args:
-        latent_dist (`DiagonalGaussianDistribution3D`):
-            Encoded outputs of `Encoder3D` represented as the mean and logvar of `DiagonalGaussianDistribution3D`.
-            `DiagonalGaussianDistribution3D` allows for sampling latents from the distribution.
-    """
-
-    latent_dist: "DiagonalGaussianDistribution3D"
+from ..modeling_outputs import Autoencoder3DOutput
+from .vae import Encoder3D, Decoder3D, Decoder3DOutput, DiagonalGaussianDistribution3D
 
 
 class Autoencoder3D(ModelMixin, ConfigMixin):

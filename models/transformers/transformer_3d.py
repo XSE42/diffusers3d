@@ -28,35 +28,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
 
-from diffusers.utils import USE_PEFT_BACKEND, BaseOutput, is_torch_version
+from diffusers.utils import USE_PEFT_BACKEND, deprecate, is_torch_version
 from diffusers.models.lora import LoRACompatibleLinear
 from diffusers.models.attention import BasicTransformerBlock
-from diffusers.models.embeddings import PixArtAlphaTextProjection
-from diffusers.models.normalization import AdaLayerNormSingle
 from diffusers.models.modeling_utils import ModelMixin
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 
+from ..modeling_outputs import Transformer3DModelOutput
 from ..lora import LoRACompatibleConv3d
 
 
-@dataclass
-class Transformer3DModelOutput(BaseOutput):
-    """
-    The output of [`Transformer3DModel`].
-
-    Args:
-        sample (`torch.Tensor` of shape `(batch_size, num_channels, depth, height, width)`):
-            The hidden states output conditioned on the `encoder_hidden_states` input. If discrete, returns probability
-            distributions for the unnoised latent pixels.
-    """
-
-    sample: torch.Tensor
+class Transformer3DModelOutput(Transformer3DModelOutput):
+    deprecation_message = "Importing `Transformer3DModelOutput` from `~models.transformers.transformer_3d` is deprecated and this will be removed in a future version. Please use `from ~models.modeling_outputs import Transformer3DModelOutput`, instead."
+    deprecate("Transformer3DModelOutput", "1.0.0", deprecation_message)
 
 
 class Transformer3DModel(ModelMixin, ConfigMixin):
@@ -132,23 +121,6 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
                     f"When using a `patch_size` and this `norm_type` ({norm_type}), `num_embeds_ada_norm` cannot be None."
                 )
 
-        # Set some common variables used across the board.
-        self.use_linear_projection = use_linear_projection
-        self.interpolation_scale = interpolation_scale
-        self.caption_channels = caption_channels
-        self.num_attention_heads = num_attention_heads
-        self.attention_head_dim = attention_head_dim
-        self.inner_dim = self.config.num_attention_heads * self.config.attention_head_dim
-        self.in_channels = in_channels
-        self.out_channels = in_channels if out_channels is None else out_channels
-        self.gradient_checkpointing = False
-        if use_additional_conditions is None:
-            if norm_type == "ada_norm_single" and sample_size == 128:
-                use_additional_conditions = True
-            else:
-                use_additional_conditions = False
-        self.use_additional_conditions = use_additional_conditions
-
         self.conv_cls = nn.Conv3d if USE_PEFT_BACKEND else LoRACompatibleConv3d
         self.linear_cls = nn.Linear if USE_PEFT_BACKEND else LoRACompatibleLinear
 
@@ -158,9 +130,6 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
         self.is_input_continuous = (in_channels is not None) and (patch_size is None)
         self.is_input_vectorized = num_vector_embeds is not None
         self.is_input_patches = in_channels is not None and patch_size is not None
-
-        if norm_type == "layer_norm" and num_embeds_ada_norm is not None:
-            norm_type = "ada_norm"
 
         if self.is_input_vectorized:
             raise NotImplementedError(
@@ -174,6 +143,35 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
             raise ValueError(
                 f"Has to define `in_channels`: {in_channels}. Make sure that `in_channels` is not None."
             )
+
+        if norm_type == "layer_norm" and num_embeds_ada_norm is not None:
+            deprecation_message = (
+                f"The configuration file of this model: {self.__class__} is outdated. `norm_type` is either not set or"
+                " incorrectly set to `'layer_norm'`. Make sure to set `norm_type` to `'ada_norm'` in the config."
+                " Please make sure to update the config accordingly as leaving `norm_type` might led to incorrect"
+                " results in future versions. If you have downloaded this checkpoint from the Hugging Face Hub, it"
+                " would be very nice if you could open a Pull request for the `transformer/config.json` file"
+            )
+            deprecate("norm_type!=num_embeds_ada_norm", "1.0.0", deprecation_message, standard_warn=False)
+            norm_type = "ada_norm"
+
+        # Set some common variables used across the board.
+        self.use_linear_projection = use_linear_projection
+        self.interpolation_scale = interpolation_scale
+        self.caption_channels = caption_channels
+        self.num_attention_heads = num_attention_heads
+        self.attention_head_dim = attention_head_dim
+        self.inner_dim = self.config.num_attention_heads * self.config.attention_head_dim
+        self.in_channels = in_channels
+        self.out_channels = in_channels if out_channels is None else out_channels
+        self.gradient_checkpointing = False
+
+        if use_additional_conditions is None:
+            if norm_type == "ada_norm_single" and sample_size == 128:
+                use_additional_conditions = True
+            else:
+                use_additional_conditions = False
+        self.use_additional_conditions = use_additional_conditions
 
         # 2. Initialize the right blocks.
         # These functions follow a common structure:
