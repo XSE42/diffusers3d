@@ -99,9 +99,12 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
         mid_block_add_attention: bool = True,
         sample_size: int = 32,
         scaling_factor: float = 0.18215,
+        shift_factor: Optional[float] = None,
         latents_mean: Optional[Tuple[float]] = None,
         latents_std: Optional[Tuple[float]] = None,
         force_upcast: float = True,
+        use_quant_conv: bool = True,
+        use_post_quant_conv: bool = True,
     ):
         super().__init__()
 
@@ -130,8 +133,8 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
             mid_block_add_attention=mid_block_add_attention,
         )
 
-        self.quant_conv = nn.Conv3d(2 * latent_channels, 2 * latent_channels, 1)
-        self.post_quant_conv = nn.Conv3d(latent_channels, latent_channels, 1)
+        self.quant_conv = nn.Conv3d(2 * latent_channels, 2 * latent_channels, 1) if use_quant_conv else None
+        self.post_quant_conv = nn.Conv3d(latent_channels, latent_channels, 1) if use_post_quant_conv else None
 
         self.use_slicing = False
 
@@ -253,7 +256,11 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
         else:
             h = self.encoder(x)
 
-        moments = self.quant_conv(h)
+        if self.quant_conv is not None:
+            moments = self.quant_conv(h)
+        else:
+            moments = h
+
         posterior = DiagonalGaussianDistribution3D(moments)
 
         if not return_dict:
@@ -262,7 +269,9 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
         return Autoencoder3DOutput(latent_dist=posterior)
 
     def _decode(self, z: torch.Tensor, return_dict: bool = True) -> Union[Decoder3DOutput, torch.Tensor]:
-        z = self.post_quant_conv(z)
+        if self.post_quant_conv is not None:
+            z = self.post_quant_conv(z)
+
         dec = self.decoder(z)
 
         if not return_dict:
