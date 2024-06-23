@@ -1,6 +1,6 @@
 # diffusers3d
 
-其他语言：[English](./README.md)
+[English](./README.md) | [简体中文](./README-zh_CN.md)
 
 ## 简介
 
@@ -10,4 +10,4 @@
 
 ## 许可
 
-本项目的许可协议为 [Apache-2.0](./LICENSE).
+本项目的许可协议为 [Apache-2.0](./LICENSE)

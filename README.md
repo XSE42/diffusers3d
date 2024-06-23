@@ -1,6 +1,6 @@
 # diffusers3d
 
-Other languages: [简体中文](./README-zh_CN.md)
+[English](./README.md) | [简体中文](./README-zh_CN.md)
 
 ## Introduction
 
@@ -10,4 +10,4 @@ This modification was made during my research on medical imaging, hoping to assi
 
 ## License
 
-This project is licensed under the [Apache-2.0](./LICENSE).
+This project is licensed under the [Apache-2.0](./LICENSE)
