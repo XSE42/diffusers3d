@@ -32,7 +32,8 @@ from typing import Optional
 
 from torch import nn
 
-from .transformer_3d import Transformer3DModel, Transformer3DModelOutput
+from ..modeling_outputs import Transformer3DModelOutput
+from .transformer_3d import Transformer3DModel
 
 
 class DualTransformer3DModel(nn.Module):
