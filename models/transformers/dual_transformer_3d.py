@@ -139,9 +139,9 @@ class DualTransformer3DModel(nn.Module):
                 Whether or not to return a [`~models.transformer_3d.Transformer3DModelOutput`] instead of a plain tuple.
 
         Returns:
-            [`~models.transformer_3d.Transformer3DModelOutput`] or `tuple`:
-            [`~models.transformer_3d.Transformer3DModelOutput`] if `return_dict` is True, otherwise a `tuple`. When
-            returning a tuple, the first element is the sample tensor.
+            [`~models.transformers.transformer_3d.Transformer3DModelOutput`] or `tuple`:
+            [`~models.transformers.transformer_3d.Transformer3DModelOutput`] if `return_dict` is True, otherwise a
+            `tuple`. When returning a tuple, the first element is the sample tensor.
         """
         input_states = hidden_states
 

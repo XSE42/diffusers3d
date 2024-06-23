@@ -244,7 +244,23 @@ class Autoencoder3D(ModelMixin, ConfigMixin):
         self.set_attn_processor(processor)
 
     @apply_forward_hook
-    def encode(self, x: torch.Tensor, return_dict: bool = True) -> Autoencoder3DOutput:
+    def encode(
+        self, x: torch.Tensor, return_dict: bool = True
+    ) -> Union[Autoencoder3DOutput, Tuple[DiagonalGaussianDistribution3D]]:
+        """
+        Encode a batch of volumes into latents.
+
+        Args:
+            x (`torch.Tensor`): Input batch of volumes.
+            return_dict (`bool`, *optional*, defaults to `True`):
+                Whether to return a [`~models.autoencoders.autoencoder_kl.Autoencoder3DOutput`] instead of a plain
+                tuple.
+
+        Returns:
+                The latent representations of the encoded volumes. If `return_dict` is True, a
+                [`~models.autoencoders.autoencoder_kl.Autoencoder3DOutput`] is returned, otherwise a plain `tuple` is
+                returned.
+        """
         if self.use_slicing and x.shape[0] > 1:
             encoded_slices = [self.encoder(x_slice) for x_slice in x.split(1)]
             h = torch.cat(encoded_slices)

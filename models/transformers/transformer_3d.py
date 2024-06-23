@@ -273,8 +273,8 @@ class Transformer3DModel(ModelMixin, ConfigMixin):
                 tuple.
 
         Returns:
-            If `return_dict` is True, an [`~models.transformer_3d.Transformer3DModelOutput`] is returned, otherwise a
-            `tuple` where the first element is the sample tensor.
+            If `return_dict` is True, an [`~models.transformers.transformer_3d.Transformer3DModelOutput`] is returned,
+            otherwise a `tuple` where the first element is the sample tensor.
         """
         # ensure attention_mask is a bias, and give it a singleton query_tokens dimension.
         #   we may have done this conversion already, e.g. if we came here via UNet3DConditionModel#forward.
