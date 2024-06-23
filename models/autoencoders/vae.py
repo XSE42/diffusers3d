@@ -52,6 +52,7 @@ class Decoder3DOutput(BaseOutput):
     """
 
     sample: torch.Tensor
+    commit_loss: Optional[torch.FloatTensor] = None
 
 
 class Encoder3D(nn.Module):
