@@ -37,11 +37,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from diffusers.image_processor import IPAdapterMaskProcessor
 from diffusers.utils import USE_PEFT_BACKEND, deprecate, logging
 from diffusers.utils.torch_utils import maybe_allow_in_graph
 from diffusers.utils.import_utils import is_torch_npu_available, is_xformers_available
 from diffusers.models.lora import LoRACompatibleLinear, LoRALinearLayer
+
+from ..image_processor import IPAdapterMaskProcessor3D
 
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
@@ -2521,10 +2522,7 @@ class IPAdapterAttnProcessor(nn.Module):
 
         input_ndim = hidden_states.ndim
 
-        if input_ndim == 4:
-            batch_size, channel, height, width = hidden_states.shape
-            hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
-        elif input_ndim == 5:
+        if input_ndim == 5:
             batch_size, channel, depth, height, width = hidden_states.shape
             hidden_states = hidden_states.view(batch_size, channel, depth * height * width).transpose(1, 2)
 
@@ -2556,7 +2554,7 @@ class IPAdapterAttnProcessor(nn.Module):
 
         if ip_adapter_masks is not None:
             if not isinstance(ip_adapter_masks, List):
-                # for backward compatibility, we accept `ip_adapter_mask` as a tensor of shape [num_ip_adapter, 1, height, width]
+                # for backward compatibility, we accept `ip_adapter_mask` as a tensor of shape [num_ip_adapter, 1, depth, height, width]
                 ip_adapter_masks = list(ip_adapter_masks.unsqueeze(1))
             if not (len(ip_adapter_masks) == len(self.scale) == len(ip_hidden_states)):
                 raise ValueError(
@@ -2566,11 +2564,11 @@ class IPAdapterAttnProcessor(nn.Module):
                 )
             else:
                 for index, (mask, scale, ip_state) in enumerate(zip(ip_adapter_masks, self.scale, ip_hidden_states)):
-                    if not isinstance(mask, torch.Tensor) or mask.ndim != 4:
+                    if not isinstance(mask, torch.Tensor) or mask.ndim != 5:
                         raise ValueError(
                             "Each element of the ip_adapter_masks array should be a tensor with shape "
-                            "[1, num_images_for_ip_adapter, height, width]."
-                            " Please use `IPAdapterMaskProcessor` to preprocess your mask"
+                            "[1, num_images_for_ip_adapter, depth, height, width]."
+                            " Please use `IPAdapterMaskProcessor3D` to preprocess your mask"
                         )
                     if mask.shape[1] != ip_state.shape[1]:
                         raise ValueError(
@@ -2612,8 +2610,8 @@ class IPAdapterAttnProcessor(nn.Module):
                         _current_ip_hidden_states = torch.bmm(ip_attention_probs, ip_value)
                         _current_ip_hidden_states = attn.batch_to_head_dim(_current_ip_hidden_states)
 
-                        mask_downsample = IPAdapterMaskProcessor.downsample(
-                            mask[:, i, :, :],
+                        mask_downsample = IPAdapterMaskProcessor3D.downsample(
+                            mask[:, i, :, :, :],
                             batch_size,
                             _current_ip_hidden_states.shape[1],
                             _current_ip_hidden_states.shape[2],
@@ -2640,9 +2638,7 @@ class IPAdapterAttnProcessor(nn.Module):
         # dropout
         hidden_states = attn.to_out[1](hidden_states)
 
-        if input_ndim == 4:
-            hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
-        elif input_ndim == 5:
+        if input_ndim == 5:
             hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, depth, height, width)
 
         if attn.residual_connection:
@@ -2729,10 +2725,7 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
 
         input_ndim = hidden_states.ndim
 
-        if input_ndim == 4:
-            batch_size, channel, height, width = hidden_states.shape
-            hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
-        elif input_ndim == 5:
+        if input_ndim == 5:
             batch_size, channel, depth, height, width = hidden_states.shape
             hidden_states = hidden_states.view(batch_size, channel, depth * height * width).transpose(1, 2)
 
@@ -2778,7 +2771,7 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
 
         if ip_adapter_masks is not None:
             if not isinstance(ip_adapter_masks, List):
-                # for backward compatibility, we accept `ip_adapter_mask` as a tensor of shape [num_ip_adapter, 1, height, width]
+                # for backward compatibility, we accept `ip_adapter_mask` as a tensor of shape [num_ip_adapter, 1, depth, height, width]
                 ip_adapter_masks = list(ip_adapter_masks.unsqueeze(1))
             if not (len(ip_adapter_masks) == len(self.scale) == len(ip_hidden_states)):
                 raise ValueError(
@@ -2788,11 +2781,11 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
                 )
             else:
                 for index, (mask, scale, ip_state) in enumerate(zip(ip_adapter_masks, self.scale, ip_hidden_states)):
-                    if not isinstance(mask, torch.Tensor) or mask.ndim != 4:
+                    if not isinstance(mask, torch.Tensor) or mask.ndim != 5:
                         raise ValueError(
                             "Each element of the ip_adapter_masks array should be a tensor with shape "
-                            "[1, num_images_for_ip_adapter, height, width]."
-                            " Please use `IPAdapterMaskProcessor` to preprocess your mask"
+                            "[1, num_images_for_ip_adapter, depth, height, width]."
+                            " Please use `IPAdapterMaskProcessor3D` to preprocess your mask"
                         )
                     if mask.shape[1] != ip_state.shape[1]:
                         raise ValueError(
@@ -2841,8 +2834,8 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
                         )
                         _current_ip_hidden_states = _current_ip_hidden_states.to(query.dtype)
 
-                        mask_downsample = IPAdapterMaskProcessor.downsample(
-                            mask[:, i, :, :],
+                        mask_downsample = IPAdapterMaskProcessor3D.downsample(
+                            mask[:, i, :, :, :],
                             batch_size,
                             _current_ip_hidden_states.shape[1],
                             _current_ip_hidden_states.shape[2],
@@ -2875,9 +2868,7 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
         # dropout
         hidden_states = attn.to_out[1](hidden_states)
 
-        if input_ndim == 4:
-            hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
-        elif input_ndim == 5:
+        if input_ndim == 5:
             hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, depth, height, width)
 
         if attn.residual_connection:
